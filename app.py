@@ -4,6 +4,9 @@ from openai import OpenAI
 from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from PyPDF2 import PdfReader
+import json
+import pandas as pd
+import altair as alt
 
 JOB_POSITION = """
 Position: Engineering Manager
@@ -24,6 +27,11 @@ Requirements:
 - Strong technical expertise in the above technologies.
 - Excellent communication and problem-solving skills.
 """
+
+LLM_JSON_TEMPLATE = """"
+{'match-rating':'','what-fits':[],'what-not-fits':[],'what-requires-additional-info':[]}
+"""
+
 st.title("🧑🏾‍💻👩🏼‍💻🔗 Candidate Fit App")
 
 
@@ -45,13 +53,14 @@ def extract_pdf(file):
 
 
 def get_fit_analysis_and_rate(input_text, job_position, max_length):
-    chunks = [input_text[i:i+max_length]
-        for i in range(0, len(input_text), max_length)]
+    # chunks = [input_text[i:i+max_length]
+    #     for i in range(0, len(input_text), max_length)]
     results = []
-    for i, chunk in enumerate(chunks):
-        st.write(f"Analyzing chunk {i + 1}")
-        results.append(generate_response(f"Extract relevant information about the experience and the skills of the person: {
-                       chunk} and match candidate with the job position: {job_position} Please be concise and write also a match rate"))
+    # for i, chunk in enumerate(chunks):
+    #     st.write(f"Analyzing chunk {i + 1}")
+    #     results.append(generate_response(f"Extract relevant information about the experience and the skills of the person: {
+    #                    chunk} and match candidate with the job position: {job_position} Please be concise and write also a match rate. The analys should show: the match rating, what fits and what not"))
+    results.append(generate_response(f"Extract relevant information about the experience and the skills of the person: {input_text} and match candidate with the job position: {job_position} Please show only the data requested in template, no additional text. The analys should show the match rating (x/10), what fits and what not, and should be formatted in json with this template: {LLM_JSON_TEMPLATE}  "))
     return "\n\n".join(results);
 
 # with st.form("my_form"):
@@ -77,5 +86,12 @@ if uploaded_file is not None:
             # Display the combined results
             st.success("Analysis Completed!")
             st.text_area("Analysis Result", analysis, height=300)
+            data = json.loads(analysis)
+            # Display the answer and rating in the Streamlit app
+           
+            rating = int(data['match-rating'])  # Convert the rating to an integer for charting
+            # Create a DataFrame for Altair
+            st.metric(label="Rating", value="8",delta="")
+            
         except Exception as e:
             st.error(f"Error during candidate Resume Analysis: {e}")
