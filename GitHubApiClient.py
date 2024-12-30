@@ -49,7 +49,8 @@ class GitHubApiClient:
                     if repo_name not in contributions['repos']:
                         contributions['repos'][repo_name] = {
                             'events': {},
-                            'tech_stack': self.get_repo_tech_stack(repo_name)
+                        #remove the comment to enable the tech_stack retrieval
+                        #'tech_stack': self.get_repo_tech_stack(repo_name)
                         }
                     if event_type not in contributions['repos'][repo_name][
                             'events']:
