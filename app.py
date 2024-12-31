@@ -1,4 +1,5 @@
 import json
+import logging
 
 import altair as alt
 import pandas as pd
@@ -10,6 +11,11 @@ from openai import OpenAI
 from PyPDF2 import PdfReader
 
 from githubapiclient import GitHubApiClient
+
+logging.basicConfig(level=logging.ERROR,
+                    filename='app.log',
+                    filemode='a',
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 JOB_POSITION = """
 Position: Engineering Manager
@@ -32,14 +38,14 @@ Requirements:
 """
 
 LLM_JSON_TEMPLATE = """"
-{'match-rating':'','what-fits':[],'what-not-fits':[],'what-requires-additional-info':[], 'github-username':'', tech-stack-candidate-match':[{'<technology-name>':<true|false>}]} }
+{'match-rating':'','description':'','experience-in-role':'','what-fits':[],'what-not-fits':[],'what-requires-additional-info':[], 'github-username':'', tech-stack-candidate-match':{{'<technology-name1>':<true|false>},{'<technology-name2>':<true|false>},...}}
 """
 
 st.title("🧑🏾‍💻👩🏼‍💻🔗 Candidate Fit App")
 
 
 def generate_response(input_text):
-    model = ChatOllama(temperature=0.7, model="llama3.2")
+    model = ChatOllama(temperature=0.2, model="llama3.2", format="json")
     response = model.invoke(input_text)
     if isinstance(response, str):
         return response
@@ -65,7 +71,7 @@ def get_fit_analysis_and_rate(input_text, job_position, max_length):
     #                    chunk} and match candidate with the job position: {job_position} Please be concise and write also a match rate. The analys should show: the match rating, what fits and what not"))
     results.append(
         generate_response(
-            f"Extract relevant information about the experience and the skills of the person: {input_text} and match candidate with the job position: {job_position} Please show only the data requested in template, no additional text. The analysis should show the match rating (x/10) regarding experience within the role and technologies used, what fits and what not, what could be asked during the interview (what-requires-additional-info) and extract the github username if present. The analysis should be formatted in json using this template: {LLM_JSON_TEMPLATE}  "
+            f"Analyze the provided input to extract relevant information about the person's experience and skills: {input_text}, and match the candidate with the job position: {job_position}. Format the output strictly as per the JSON template: {LLM_JSON_TEMPLATE}, including a match rating (0-100) for experience and technologies, alignment details (regarding experience within the role and technologies used, what fits and what not), interview clarifications (what-requires-additional-info), the candidate's GitHub username if available, and a tech-stack-candidate-match field listing job position technologies with booleans indicating the candidate's experience (explicitly stated in the resume). Output only the requested data in JSON format, no additional text"
         ))
     return "\n\n".join(results)
 
@@ -90,7 +96,6 @@ if uploaded_file is not None:
             #st.text_area("Content preview", file_content[:1000], height=250)
             analysis = get_fit_analysis_and_rate(file_content, JOB_POSITION,
                                                  4000)
-            # Display the combined results
             st.success("Analysis Completed!")
             st.text_area("Analysis Result", analysis, height=300)
             data = json.loads(analysis)
@@ -109,7 +114,10 @@ if uploaded_file is not None:
             if tech_stack_match:
                 tech_match_df = pd.DataFrame(list(tech_stack_match.items()),
                                              columns=['Technology', 'Match'])
+                tech_match_df['Match'] = tech_match_df['Match'].apply(
+                    lambda x: '✅' if x else '❌')
                 st.write("Tech Stack Match")
                 st.table(tech_match_df)
         except Exception as e:
+            logging.error(f"Error during candidate Resume Analysis: {e}")
             st.error(f"Error during candidate Resume Analysis: {e}")
