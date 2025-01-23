@@ -61,14 +61,9 @@ def extract_pdf(file):
     return file_content
 
 
-def get_fit_analysis_and_rate(input_text, job_position, max_length):
-    # chunks = [input_text[i:i+max_length]
-    #     for i in range(0, len(input_text), max_length)]
+def get_fit_analysis_and_rate(input_text, job_position):
+
     results = []
-    # for i, chunk in enumerate(chunks):
-    #     st.write(f"Analyzing chunk {i + 1}")
-    #     results.append(generate_response(f"Extract relevant information about the experience and the skills of the person: {
-    #                    chunk} and match candidate with the job position: {job_position} Please be concise and write also a match rate. The analys should show: the match rating, what fits and what not"))
     results.append(
         generate_response(
             f"Analyze the provided input to extract relevant information about the person's experience and skills: {input_text}, and match the candidate with the job position: {job_position}. Format the output strictly as per the JSON template: {LLM_JSON_TEMPLATE}, including a match rating (0-100) for experience and technologies, alignment details (regarding experience within the role and technologies used, what fits and what not), interview clarifications (what-requires-additional-info), the candidate's GitHub username if available, and a tech-stack-candidate-match field listing job position technologies with booleans indicating the candidate's experience (explicitly stated in the resume). Output only the requested data in JSON format, no additional text"
@@ -76,26 +71,12 @@ def get_fit_analysis_and_rate(input_text, job_position, max_length):
     return "\n\n".join(results)
 
 
-# with st.form("my_form"):
-# text = st.text_area(
-#     "Enter text:",
-#     "What are the three key pieces of advice for learning how to code?",
-# )
-# submitted = st.form_submit_button("Submit")
-# generate_response(text)
-
 uploaded_file = st.file_uploader("Upload the Resume", type=["pdf"])
 if uploaded_file is not None:
     with st.spinner("Extractiing file contents..."):
         try:
             file_content = extract_pdf(uploaded_file)
-            # loader = UnstructuredPDFLoader(uploaded_file)
-            # documents = loader.load()
-            # file_content = "\n".join([doc.page_content for doc in documents])
-
-            #st.text_area("Content preview", file_content[:1000], height=250)
-            analysis = get_fit_analysis_and_rate(file_content, JOB_POSITION,
-                                                 4000)
+            analysis = get_fit_analysis_and_rate(file_content, JOB_POSITION)
             st.success("Analysis Completed!")
             st.text_area("Analysis Result", analysis, height=300)
             data = json.loads(analysis)
@@ -104,11 +85,18 @@ if uploaded_file is not None:
 
             st.metric(label="Rating", value=rating, delta="")
             if ('github-username' in data):
-                contribution = GitHubApiClient().get_user_contributions(
-                    data['github-username'], 12)
-                st.metric(label="GitHub Contribution",
-                          value=contribution['total_events'],
-                          delta="")
+                try:
+                    contribution = GitHubApiClient().get_user_contributions(
+                        data['github-username'], 12)
+                    st.metric(label="GitHub Contribution",
+                              value=contribution['total_events'],
+                              delta="")
+                except ValueError as v:
+                    st.info("GitHub username not found on GitHub")
+                except Exception as e:
+                    st.info("Failed to fetch GitHub contributions")
+            else:
+                st.info("GitHub username not found in the resume")
 
             tech_stack_match = data.get('tech-stack-candidate-match', [])
             if tech_stack_match:

@@ -11,11 +11,13 @@ class GitHubApiClient:
         self.base_url = "https://api.github.com"
 
     def fetch_events(self, username: str) -> List[Dict]:
-        events = []
         url = f"{self.base_url}/users/{username}/events?perpage=100"
         response = requests.get(url)
-        events = response.json()
-        return events
+        if response.status_code == 404:
+            raise ValueError("User not found")
+        elif response.status_code != 200:
+            raise Exception("Failed to fetch events")
+        return response.json()
 
     def get_repo_tech_stack(self, repo_name: str) -> List[str]:
         url = f"{self.base_url}/repos/{repo_name}/languages"
