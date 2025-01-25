@@ -45,7 +45,7 @@ st.title("🧑🏾‍💻👩🏼‍💻🔗 Candidate Fit App")
 
 
 def generate_response(input_text):
-    model = ChatOllama(temperature=0.2, model="llama3.2", format="json")
+    model = ChatOllama(temperature=0.1, model="llama3.1:8b", format="json")
     response = model.invoke(input_text)
     if isinstance(response, str):
         return response
